@@ -1,0 +1,6 @@
+ssl-conf.sh
+/cmd/app/config.yaml
+/out
+/ProjectSprintBatch2Week1TestCases
+projectsprint.key
+.env
