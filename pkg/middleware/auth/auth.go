@@ -19,10 +19,10 @@ var JWT_SIGNING_METHOD = jwt.SigningMethodHS256
 type JWTAuth struct {
 	ExpireTimeInMinute int
 	SecretKey          string
-	IsAuthorizedUser   func(context.Context, uint32) bool
+	IsAuthorizedUser   func(context.Context, uint32, string) bool
 }
 
-func NewJwtAuth(expireTimeInMinute int, secretKey string, isAuthorizedUser func(context.Context, uint32) bool) JWTAuth {
+func NewJwtAuth(expireTimeInMinute int, secretKey string, isAuthorizedUser func(context.Context, uint32, string) bool) JWTAuth {
 	return JWTAuth{
 		ExpireTimeInMinute: expireTimeInMinute,
 		SecretKey:          secretKey,
@@ -30,7 +30,7 @@ func NewJwtAuth(expireTimeInMinute int, secretKey string, isAuthorizedUser func(
 	}
 }
 
-func (j JWTAuth) GenerateToken(userId uint32) (string, error) {
+func (j JWTAuth) GenerateToken(userId uint32, role string) (string, error) {
 	now := time.Now()
 
 	expiredTokenTime := jwt.NewNumericDate(
@@ -41,6 +41,7 @@ func (j JWTAuth) GenerateToken(userId uint32) (string, error) {
 
 	claims := jwt.MapClaims{}
 	claims["userId"] = userId
+	claims["role"] = role
 	// Issued At
 	claims["iat"] = now
 	// Expiration Time
@@ -55,10 +56,10 @@ func (j JWTAuth) GenerateToken(userId uint32) (string, error) {
 	return signedToken, nil
 }
 
-func (j JWTAuth) TokenValid(c *gin.Context) (uint32, error) {
+func (j JWTAuth) TokenValid(c *gin.Context) error {
 	tokenString := ExtractToken(c)
 	if tokenString == "" {
-		return 0, &msg.RespError{
+		return &msg.RespError{
 			Code:    http.StatusUnauthorized,
 			Message: msg.ErrTokenNotFound,
 		}
@@ -79,7 +80,7 @@ func (j JWTAuth) TokenValid(c *gin.Context) (uint32, error) {
 		return []byte(j.SecretKey), nil
 	})
 	if err != nil {
-		return 0, &msg.RespError{
+		return &msg.RespError{
 			Code:    http.StatusUnauthorized,
 			Message: err.Error(),
 		}
@@ -89,22 +90,22 @@ func (j JWTAuth) TokenValid(c *gin.Context) (uint32, error) {
 	if !ok || !token.Valid {
 		switch {
 		case errors.Is(err, jwt.ErrTokenMalformed):
-			return 0, &msg.RespError{
+			return &msg.RespError{
 				Code:    http.StatusUnauthorized,
 				Message: msg.ErrInvalidToken,
 			}
 		case errors.Is(err, jwt.ErrTokenSignatureInvalid):
-			return 0, &msg.RespError{
+			return &msg.RespError{
 				Code:    http.StatusUnauthorized,
 				Message: msg.ErrInvalidSigningMethod,
 			}
 		case errors.Is(err, jwt.ErrTokenExpired) || errors.Is(err, jwt.ErrTokenNotValidYet):
-			return 0, &msg.RespError{
+			return &msg.RespError{
 				Code:    http.StatusUnauthorized,
 				Message: msg.ErrTokenAlreadyExpired,
 			}
 		default:
-			return 0, &msg.RespError{
+			return &msg.RespError{
 				Code:    http.StatusUnauthorized,
 				Message: err.Error(),
 			}
@@ -113,22 +114,26 @@ func (j JWTAuth) TokenValid(c *gin.Context) (uint32, error) {
 
 	uid, err := strconv.ParseUint(fmt.Sprintf("%.0f", claims["userId"]), 10, 32)
 	if err != nil {
-		return 0, &msg.RespError{
+		return &msg.RespError{
 			Code:    http.StatusUnauthorized,
 			Message: err.Error(),
 		}
 	}
 
 	userId := uint32(uid)
+	role := claims["role"].(string)
 
-	if !j.IsAuthorizedUser(c.Request.Context(), userId) {
-		return 0, &msg.RespError{
+	if !j.IsAuthorizedUser(c.Request.Context(), userId, role) {
+		return &msg.RespError{
 			Code:    http.StatusUnauthorized,
 			Message: msg.ErrInvalidToken,
 		}
 	}
 
-	return userId, nil
+	c.Set("userId", userId)
+	c.Set("role", role)
+
+	return nil
 }
 
 func ExtractToken(c *gin.Context) string {
@@ -147,7 +152,7 @@ func ExtractToken(c *gin.Context) string {
 
 func (j JWTAuth) JwtAuthUserMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userId, err := j.TokenValid(c)
+		err := j.TokenValid(c)
 		if err != nil {
 			respError := msg.UnwrapRespError(err)
 			c.JSON(respError.Code, respError)
@@ -155,7 +160,28 @@ func (j JWTAuth) JwtAuthUserMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("userId", userId)
+		c.Next()
+	}
+}
+
+func (j JWTAuth) CheckAdminRole() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, err := GetRoleInsideCtx(c)
+		if err != nil {
+			respError := msg.UnwrapRespError(err)
+			c.JSON(respError.Code, respError)
+			c.Abort()
+			return
+		}
+
+		if role != "admin" {
+			respErr := msg.Unauthorization("You don't have an admin access")
+			c.JSON(http.StatusUnauthorized, respErr)
+			c.Abort()
+			return
+
+		}
+
 		c.Next()
 	}
 }
@@ -178,4 +204,24 @@ func GetUserIdInsideCtx(c *gin.Context) (uint32, error) {
 	}
 
 	return userId, nil
+}
+
+func GetRoleInsideCtx(c *gin.Context) (string, error) {
+	rawRole, exist := c.Get("role")
+	if !exist {
+		return "", &msg.RespError{
+			Code:    http.StatusBadRequest,
+			Message: "Can't retrieve role inside context",
+		}
+	}
+
+	role, ok := rawRole.(string)
+	if !ok {
+		return "", &msg.RespError{
+			Code:    http.StatusBadRequest,
+			Message: "Can't parse role from current context",
+		}
+	}
+
+	return role, nil
 }

@@ -60,3 +60,41 @@ func (h UserHandler) RegisterAdmin(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, msg.ReturnResult("Admin registered successfully", resp))
 }
+
+func (h UserHandler) LoginUser(c *gin.Context) {
+	payload := new(entity.UserLoginParam)
+
+	err := c.ShouldBindJSON(payload)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, msg.BadRequest(err.Error()))
+		return
+	}
+
+	resp, err := h.userSvc.Login(c.Request.Context(), *payload)
+	if err != nil {
+		respError := msg.UnwrapRespError(err)
+		c.JSON(respError.Code, respError)
+		return
+	}
+
+	c.JSON(http.StatusOK, msg.ReturnResult("User logged successfully", resp))
+}
+
+func (h UserHandler) LoginAdmin(c *gin.Context) {
+	payload := new(entity.UserLoginParam)
+
+	err := c.ShouldBindJSON(payload)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, msg.BadRequest(err.Error()))
+		return
+	}
+
+	resp, err := h.userSvc.Login(c.Request.Context(), *payload)
+	if err != nil {
+		respError := msg.UnwrapRespError(err)
+		c.JSON(respError.Code, respError)
+		return
+	}
+
+	c.JSON(http.StatusOK, msg.ReturnResult("Admin logged successfully", resp))
+}

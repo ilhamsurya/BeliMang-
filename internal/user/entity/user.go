@@ -24,6 +24,11 @@ type UserRegisterParam struct {
 	Salt     string `json:"-"`
 }
 
+type UserLoginParam struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 type UserResponse struct {
 	Token string `json:"token"`
 }
