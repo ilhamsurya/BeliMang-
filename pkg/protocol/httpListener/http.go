@@ -120,6 +120,7 @@ func Start() *HttpImpl {
 	httpHandlerImpl := NewHttpHandler(
 		imageHandler,
 		userHandler,
+		jwtAuth,
 	)
 	httpRouterImpl := NewHttpRoute(httpHandlerImpl)
 	httpImpl := NewHttpProtocol(httpRouterImpl)

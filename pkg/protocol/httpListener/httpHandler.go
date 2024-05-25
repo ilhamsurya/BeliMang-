@@ -3,6 +3,7 @@ package httpListener
 import (
 	"net/http"
 	"projectsphere/beli-mang/config"
+	"projectsphere/beli-mang/pkg/middleware/auth"
 	"projectsphere/beli-mang/pkg/middleware/logger"
 	"projectsphere/beli-mang/pkg/protocol/msg"
 
@@ -15,15 +16,18 @@ import (
 type HttpHandlerImpl struct {
 	imageHandler imageHandler.ImageHandler
 	userHandler  userHandler.UserHandler
+	jwtAuth      auth.JWTAuth
 }
 
 func NewHttpHandler(
 	imageHandler imageHandler.ImageHandler,
 	ususerHandler userHandler.UserHandler,
+	jwtAuth auth.JWTAuth,
 ) *HttpHandlerImpl {
 	return &HttpHandlerImpl{
 		imageHandler: imageHandler,
 		userHandler:  ususerHandler,
+		jwtAuth:      jwtAuth,
 	}
 }
 
@@ -54,13 +58,16 @@ func (h *HttpHandlerImpl) Router() *gin.Engine {
 	r := server.Group(config.GetString("APPLICATION_GROUP"))
 
 	image := r.Group("/image")
+	image.Use(h.jwtAuth.JwtAuthUserMiddleware())
 	image.POST("/", h.imageHandler.UploadImage)
 
 	userGroup := r.Group("/users")
 	userGroup.POST("/register", h.userHandler.RegisterUser)
+	userGroup.POST("/login", h.userHandler.LoginUser)
 
 	adminGroup := r.Group("/admin")
 	adminGroup.POST("/register", h.userHandler.RegisterAdmin)
+	adminGroup.POST("/login", h.userHandler.LoginAdmin)
 
 	return server
 }

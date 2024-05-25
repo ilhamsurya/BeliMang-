@@ -85,9 +85,9 @@ func (r UserRepo) IsUserEmailConflictedAdminEmail(ctx context.Context, email str
 	return result == 1
 }
 
-func (r UserRepo) IsUserExist(ctx context.Context, userId uint32) bool {
+func (r UserRepo) IsUserExist(ctx context.Context, userId uint32, role string) bool {
 	query := `
-		SELECT 1 FROM users WHERE id_user = $1
+		SELECT 1 FROM users WHERE id_user = $1 and role = $2
 	`
 
 	result := 0
@@ -96,6 +96,7 @@ func (r UserRepo) IsUserExist(ctx context.Context, userId uint32) bool {
 		&result,
 		query,
 		userId,
+		role,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -106,4 +107,26 @@ func (r UserRepo) IsUserExist(ctx context.Context, userId uint32) bool {
 	}
 
 	return result == 1
+}
+
+func (r UserRepo) GetUserByUsername(ctx context.Context, username string) (entity.User, error) {
+	query := `
+		SELECT id_user, username, email, role, password, salt, created_at, updated_at FROM users WHERE username = $1
+	`
+	var row entity.User
+	err := r.dbConnector.DB.GetContext(
+		ctx,
+		&row,
+		query,
+		username,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return entity.User{}, msg.NotFound(msg.ErrUserNotFound)
+		} else {
+			return entity.User{}, msg.InternalServerError(err.Error())
+		}
+	}
+
+	return row, nil
 }

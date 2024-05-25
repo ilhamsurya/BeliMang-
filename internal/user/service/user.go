@@ -59,7 +59,36 @@ func (u UserService) Register(ctx context.Context, param *entity.UserRegisterPar
 		return entity.UserResponse{}, err
 	}
 
-	accessToken, err := u.jwtAuth.GenerateToken(user.IdUser)
+	accessToken, err := u.jwtAuth.GenerateToken(user.IdUser, user.Role)
+	if err != nil {
+		return entity.UserResponse{}, err
+	}
+
+	return entity.UserResponse{
+		Token: accessToken,
+	}, nil
+}
+
+func (u UserService) Login(ctx context.Context, param entity.UserLoginParam) (entity.UserResponse, error) {
+	if !validator.IsValidUsername(param.Username) {
+		return entity.UserResponse{}, msg.BadRequest(msg.ErrInvalidUsername)
+	}
+
+	if !validator.IsSolidPassword(param.Password) {
+		return entity.UserResponse{}, msg.BadRequest(msg.ErrInvalidPassword)
+	}
+
+	user, err := u.userRepo.GetUserByUsername(ctx, param.Username)
+	if err != nil {
+		return entity.UserResponse{}, err
+	}
+
+	err = auth.CompareHash(user.Password, param.Password, user.Salt)
+	if err != nil {
+		return entity.UserResponse{}, msg.BadRequest(msg.ErrWrongPassword)
+	}
+
+	accessToken, err := u.jwtAuth.GenerateToken(user.IdUser, user.Role)
 	if err != nil {
 		return entity.UserResponse{}, err
 	}
