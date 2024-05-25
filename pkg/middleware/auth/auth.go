@@ -78,7 +78,6 @@ func (j JWTAuth) TokenValid(c *gin.Context) (uint32, error) {
 		}
 		return []byte(j.SecretKey), nil
 	})
-
 	if err != nil {
 		return 0, &msg.RespError{
 			Code:    http.StatusUnauthorized,

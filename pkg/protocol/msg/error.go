@@ -58,6 +58,7 @@ const (
 	ErrStatusNotFound              = "status not found"
 
 	// user
+	ErrInvalidUsername        = "username should have at least 5 characters or a maximum of 30 characters"
 	ErrUserAlreadyExist       = "user already exists"
 	ErrUserNotExist           = "user not exists"
 	ErrUsernameAlreadyExist   = "user name already exists"
