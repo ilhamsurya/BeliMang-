@@ -2,30 +2,33 @@ package httpListener
 
 import (
 	"net/http"
-
 	"projectsphere/beli-mang/config"
-	imageHandler "projectsphere/beli-mang/internal/image/handler"
 	"projectsphere/beli-mang/pkg/middleware/logger"
 	"projectsphere/beli-mang/pkg/protocol/msg"
+
+	imageHandler "projectsphere/beli-mang/internal/image/handler"
+	userHandler "projectsphere/beli-mang/internal/user/handler"
 
 	"github.com/gin-gonic/gin"
 )
 
 type HttpHandlerImpl struct {
 	imageHandler imageHandler.ImageHandler
+	userHandler  userHandler.UserHandler
 }
 
 func NewHttpHandler(
 	imageHandler imageHandler.ImageHandler,
-
+	ususerHandler userHandler.UserHandler,
 ) *HttpHandlerImpl {
 	return &HttpHandlerImpl{
 		imageHandler: imageHandler,
+		userHandler:  ususerHandler,
 	}
 }
+
 func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Credentials", "true")
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Disposition, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
@@ -52,6 +55,12 @@ func (h *HttpHandlerImpl) Router() *gin.Engine {
 
 	image := r.Group("/image")
 	image.POST("/", h.imageHandler.UploadImage)
+
+	userGroup := r.Group("/users")
+	userGroup.POST("/register", h.userHandler.RegisterUser)
+
+	adminGroup := r.Group("/admin")
+	adminGroup.POST("/register", h.userHandler.RegisterAdmin)
 
 	return server
 }

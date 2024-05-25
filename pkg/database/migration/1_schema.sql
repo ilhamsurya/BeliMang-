@@ -1,7 +1,8 @@
 CREATE TABLE "users" (
-  "id_user" integer PRIMARY KEY,
+  "id_user" SERIAL PRIMARY KEY,
   "username" varchar NOT NULL,
   "password" varchar NOT NULL,
+  "salt" varchar not null,
   "email" varchar NOT NULL,
   "role" varchar NOT NULL,
   "created_at" timestamp DEFAULT (CURRENT_TIMESTAMP),
@@ -9,7 +10,7 @@ CREATE TABLE "users" (
 );
 
 CREATE TABLE "merchants" (
-  "id_merchant" integer PRIMARY KEY,
+  "id_merchant" SERIAL PRIMARY KEY,
   "name" varchar NOT NULL,
   "merchant_category" varchar NOT NULL,
   "image_url" text NOT NULL,
@@ -20,7 +21,7 @@ CREATE TABLE "merchants" (
 );
 
 CREATE TABLE "merchant_items" (
-  "id_merchant_item" integer PRIMARY KEY,
+  "id_merchant_item" SERIAL PRIMARY KEY,
   "name" varchar NOT NULL,
   "product_category" varchar NOT NULL,
   "price" decimal NOT NULL,
@@ -30,7 +31,7 @@ CREATE TABLE "merchant_items" (
 );
 
 CREATE TABLE "orders" (
-  "id_order" integer PRIMARY KEY,
+  "id_order" SERIAL PRIMARY KEY,
   "order_number" varchar NOT NULL,
   "id_merchant" integer,
   "id_item" integer,
