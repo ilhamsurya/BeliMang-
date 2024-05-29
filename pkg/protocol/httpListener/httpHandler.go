@@ -8,26 +8,30 @@ import (
 	"projectsphere/beli-mang/pkg/protocol/msg"
 
 	imageHandler "projectsphere/beli-mang/internal/image/handler"
+	merchantHandler "projectsphere/beli-mang/internal/merchant/handler"
 	userHandler "projectsphere/beli-mang/internal/user/handler"
 
 	"github.com/gin-gonic/gin"
 )
 
 type HttpHandlerImpl struct {
-	imageHandler imageHandler.ImageHandler
-	userHandler  userHandler.UserHandler
-	jwtAuth      auth.JWTAuth
+	imageHandler    imageHandler.ImageHandler
+	userHandler     userHandler.UserHandler
+	merchantHandler merchantHandler.MerchantHandler
+	jwtAuth         auth.JWTAuth
 }
 
 func NewHttpHandler(
 	imageHandler imageHandler.ImageHandler,
-	ususerHandler userHandler.UserHandler,
+	userHandler userHandler.UserHandler,
+	merchantHandler merchantHandler.MerchantHandler,
 	jwtAuth auth.JWTAuth,
 ) *HttpHandlerImpl {
 	return &HttpHandlerImpl{
-		imageHandler: imageHandler,
-		userHandler:  ususerHandler,
-		jwtAuth:      jwtAuth,
+		imageHandler:    imageHandler,
+		userHandler:     userHandler,
+		merchantHandler: merchantHandler,
+		jwtAuth:         jwtAuth,
 	}
 }
 
@@ -60,6 +64,9 @@ func (h *HttpHandlerImpl) Router() *gin.Engine {
 	image := r.Group("/image")
 	image.Use(h.jwtAuth.JwtAuthUserMiddleware())
 	image.POST("/", h.imageHandler.UploadImage)
+
+	merchant := r.Group("/merchant")
+	merchant.POST("/", h.merchantHandler.Create)
 
 	userGroup := r.Group("/users")
 	userGroup.POST("/register", h.userHandler.RegisterUser)

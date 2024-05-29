@@ -12,6 +12,10 @@ import (
 
 	adapter "projectsphere/beli-mang/pkg/middleware/s3"
 
+	merchantHandler "projectsphere/beli-mang/internal/merchant/handler"
+	merchantRepository "projectsphere/beli-mang/internal/merchant/repository"
+	merchantService "projectsphere/beli-mang/internal/merchant/service"
+
 	imageHandler "projectsphere/beli-mang/internal/image/handler"
 	imageRepository "projectsphere/beli-mang/internal/image/repository"
 	imageService "projectsphere/beli-mang/internal/image/service"
@@ -117,9 +121,14 @@ func Start() *HttpImpl {
 	imageSvc := imageService.NewImageService(300, imageRepo)
 	imageHandler := imageHandler.NewImageHandler(imageSvc)
 
+	merchantRepo := merchantRepository.NewMerchantItemRepo(postgresConnector)
+	merchantSvc := merchantService.NewMerchantService(300, merchantRepo)
+	merchantHandler := merchantHandler.NewMerchantHandler(merchantSvc)
+
 	httpHandlerImpl := NewHttpHandler(
 		imageHandler,
 		userHandler,
+		merchantHandler,
 		jwtAuth,
 	)
 	httpRouterImpl := NewHttpRoute(httpHandlerImpl)
